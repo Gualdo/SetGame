@@ -10,18 +10,32 @@ import SwiftUI
 struct SetGameView: View {
     
     @ObservedObject var viewModel: SetGameViewModel
+    
     var cards: [SetGameModel.Card] {
-        return Array(viewModel.cards[0..<viewModel.cards.count])//12])
+        return Array(viewModel.cards)
     }
     
     var body: some View {
         VStack {
             Grid(cards) { card in
                 CardView(card: card)
+                    .padding(5)
+                    .offset(card.isDealt && !card.isMatched ? CGSize(width: 0.0, height: 0.0) : card.randomPosition)
+//                    .offset(card.isDealt && card.isMatched ? card.randomPosition : CGSize(width: 0.0, height: 0.0))
                     .onTapGesture {
                         viewModel.choose(card: card)
+                        withAnimation(.linear(duration: 1.11)) {
+                            viewModel.checkMatch()
+                        }
+                        withAnimation(.linear(duration: 1.12)) {
+                            viewModel.clearMatchedCards()
+                        }
                     }
-                    .padding(5)
+                    .onAppear(perform: {
+                        withAnimation(.linear(duration: 1.13)) {
+                            viewModel.setDealt()
+                        }
+                    })
             }
         }
         .padding()
