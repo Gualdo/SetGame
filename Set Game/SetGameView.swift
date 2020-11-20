@@ -11,34 +11,53 @@ struct SetGameView: View {
     
     @ObservedObject var viewModel: SetGameViewModel
     
-    var cards: [SetGameModel.Card] {
-        return Array(viewModel.cards)
-    }
+    @State var isMatch: Bool?
     
     var body: some View {
-        VStack {
-            Grid(cards) { card in
-                CardView(card: card)
-                    .padding(5)
-                    .offset(card.isDealt && !card.isMatched ? CGSize(width: 0.0, height: 0.0) : card.randomPosition)
-//                    .offset(card.isDealt && card.isMatched ? card.randomPosition : CGSize(width: 0.0, height: 0.0))
-                    .onTapGesture {
-                        viewModel.choose(card: card)
-                        withAnimation(.linear(duration: 1.11)) {
-                            viewModel.checkMatch()
+        NavigationView {
+            VStack {
+                Grid(viewModel.cards) { card in
+                    CardView(card: card)
+                        .padding(5)
+                        .offset(card.isDealt && !card.isMatched ? CGSize(width: 0.0, height: 0.0) : card.randomPosition)
+                        .onTapGesture {
+                            viewModel.choose(card: card)
+                            withAnimation(.linear(duration: 1.11)) {
+                                isMatch = viewModel.checkMatch()
+                            }
+                            if let isMatch = isMatch, !isMatch { viewModel.deselectCards() }
+                            withAnimation(.linear(duration: 1.12)) {
+                                viewModel.clearMatchedCards()
+                            }
                         }
-                        withAnimation(.linear(duration: 1.12)) {
-                            viewModel.clearMatchedCards()
-                        }
-                    }
-                    .onAppear(perform: {
-                        withAnimation(.linear(duration: 1.13)) {
-                            viewModel.setDealt()
-                        }
-                    })
+                        .onAppear(perform: {
+                            // This if make the animation works only after the first time preventing to animate all the navigationView
+                            if card.isDealt {
+                                withAnimation(.linear(duration: 1.13)) {
+                                    viewModel.setDealt()
+                                }
+                            } else {
+                                viewModel.setDealt()
+                            }
+                        })
+                        .animation(.spring(), value: card.isDealt)
+                }
+                .padding()
+                
+                Button("No match, give me more cards") {
+                    
+                }
+                .foregroundColor(.white)
+                .padding(15)
+                .background(Color.green)
+                .cornerRadius(30)
             }
+            .font(.title3)
+            .navigationBarTitle(viewModel.title, displayMode: .inline)
+            .navigationBarItems(trailing: Button("New Game", action: {
+                viewModel.createNewGame()
+            }).foregroundColor(.green))
         }
-        .padding()
     }
 }
 

@@ -59,7 +59,7 @@ struct SetGameModel {
         }
     }
     
-    mutating func checkMatch() {
+    mutating func checkMatch() -> Bool? {
         if selectedCards.count == 3 {
             if isMatch() {
                 for index in 0..<3 {
@@ -70,15 +70,20 @@ struct SetGameModel {
                     }
                 }
                 selectedCards.removeAll()
+                return true
             } else {
-                for index in 0..<tableCards.count {
-                    if tableCards[index].isSelected {
-                        tableCards[index].isSelected = false
-                    }
-                }
-                selectedCards.removeAll()
+                return false            }
+        }
+        return nil
+    }
+    
+    mutating func deselectCards() {
+        for index in 0..<tableCards.count {
+            if tableCards[index].isSelected {
+                tableCards[index].isSelected = false
             }
         }
+        selectedCards.removeAll()
     }
     
     mutating func clearMatchedCards() {

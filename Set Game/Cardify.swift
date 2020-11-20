@@ -13,7 +13,7 @@ struct Cardify {
     
     private let cornerRadius: CGFloat = 10
     private let edgeLineWidth: CGFloat = 3
-    private let shadowRadius: CGFloat = 50
+    private let shadowRadius: CGFloat = 10
 }
 
 // MARK: - AnimatableModifier protocol implementation

@@ -11,6 +11,10 @@ class SetGameViewModel: ObservableObject {
     
     @Published private var model: SetGameModel = SetGameViewModel.createSetGame()
     
+    var title: String {
+        return "SET Game"
+    }
+    
     // MARK: - Access to the Model
     
     var cards: [SetGameModel.Card] {
@@ -23,8 +27,12 @@ class SetGameViewModel: ObservableObject {
         model.choose(card: card)
     }
     
-    func checkMatch() {
-        model.checkMatch()
+    func checkMatch() -> Bool? {
+        return model.checkMatch()
+    }
+    
+    func deselectCards() {
+        model.deselectCards()
     }
     
     func clearMatchedCards() {
@@ -69,5 +77,9 @@ class SetGameViewModel: ObservableObject {
             }
             return deck
         }
+    }
+    
+    func createNewGame() {
+        self.model = SetGameViewModel.createSetGame()
     }
 }
