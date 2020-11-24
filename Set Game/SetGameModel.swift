@@ -38,9 +38,10 @@ struct SetGameModel {
     private var selectedCards: [Card] = [Card]()
     private var matchHintCards: [Card] = [Card]()
     private var userWantsHint: Bool = false
-    private var youWon: Bool = false
+    private (set) var youWon: Bool = false
     private (set) var noMorePossibleMatches: Bool = false
     private (set) var shouldClear: Bool = false
+    private (set) var points: Int = 0
     
     init(cardFactory: () -> [Card]) {
         tableCards = [Card]()
@@ -66,18 +67,24 @@ struct SetGameModel {
     }
     
     mutating func checkMatch() -> Bool? {
+        var isHintSet = true
         if selectedCards.count == 3 {
             if isMatch() {
                 for index in 0..<3 {
                     for tableIndex in 0..<tableCards.count {
                         if tableCards[tableIndex].id == selectedCards[index].id {
                             tableCards[tableIndex].isMatched = true
+                            if isHintSet {
+                                isHintSet = tableCards[tableIndex].isPossibleMatch
+                            }
                         }
                     }
                 }
                 selectedCards.removeAll()
+                points += isHintSet ? 0 : 1
                 return true
             } else {
+                points -= 1
                 return false
             }
         }
@@ -146,6 +153,7 @@ struct SetGameModel {
     }
     
     mutating func showHint() {
+        points -= 2
         for index in 0..<tableCards.count {
             tableCards[index].isSelected = false
             if matchHintCards.contains(where: { $0.id == tableCards[index].id }) {

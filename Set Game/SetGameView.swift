@@ -31,6 +31,7 @@ struct SetGameView: View {
                                 if viewModel.shouldClear {
                                     viewModel.clearMatchedCards()
                                 }
+                                presentYouWon = viewModel.youWon
                             }
                             .onAppear(perform: {
                                 viewModel.setDealt()
@@ -68,11 +69,17 @@ struct SetGameView: View {
             }
             .font(.title3)
             .navigationBarTitle(viewModel.title, displayMode: .inline)
-            .navigationBarItems(trailing: Button("New Game", action: {
+            .navigationBarItems(leading: Text("Points: \(viewModel.points)").foregroundColor(.green), trailing: Button("New Game", action: {
                 viewModel.createNewGame()
             }).foregroundColor(.green))
+            
         }
         .animation(.none)
+        .alert(isPresented: $presentYouWon) { () -> Alert in
+            Alert(title: Text("You Won!!!"), message: Text(viewModel.points == 27 ? "Awesome!!!, you completed the SET Game with PERFECT SCORE!!!🥳🎉" : "Finally!!!, you completed the SET Game"), dismissButton: .default(Text("New Game"), action: {
+                viewModel.createNewGame()
+            }))
+        }
     }
 }
 

@@ -29,6 +29,14 @@ class SetGameViewModel: ObservableObject {
         return model.shouldClear
     }
     
+    var points: Int {
+        return model.points
+    }
+    
+    var youWon: Bool {
+        return model.youWon
+    }
+    
     // MARK: - Intent(s)
     
     func choose(card: SetGameModel.Card) {
