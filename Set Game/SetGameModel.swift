@@ -27,14 +27,20 @@ struct SetGameModel {
         var isSelected: Bool = false
         var isMatched: Bool = false
         var isDealt: Bool = false
+        var isPossibleMatch: Bool = false
         var randomPosition: CGSize
     }
     
     // MARK: - Game Variables and Init
     
-    private (set) var deck: [Card]
+    private var deck: [Card]
     private (set) var tableCards: [Card]
     private var selectedCards: [Card] = [Card]()
+    private var matchHintCards: [Card] = [Card]()
+    private var userWantsHint: Bool = false
+    private var youWon: Bool = false
+    private (set) var noMorePossibleMatches: Bool = false
+    private (set) var shouldClear: Bool = false
     
     init(cardFactory: () -> [Card]) {
         tableCards = [Card]()
@@ -72,9 +78,21 @@ struct SetGameModel {
                 selectedCards.removeAll()
                 return true
             } else {
-                return false            }
+                return false
+            }
         }
         return nil
+    }
+    
+    mutating func clearMatchedCardsIfNeeded() {
+        for card in tableCards {
+            if card.isMatched {
+                shouldClear = true
+                break
+            } else {
+                shouldClear = false
+            }
+        }
     }
     
     mutating func deselectCards() {
@@ -90,10 +108,10 @@ struct SetGameModel {
         tableCards = tableCards.filter {
             !$0.isMatched
         }
-        if tableCards.count < 12 && deck.count != 0 {
+        if tableCards.count < 12, tableCards.count != 0, deck.count != 0 {
             dealMoreCards()
-        } else {
-            // FIXME: - Win condition
+        } else if tableCards.count == 0 {
+            youWon = true
         }
     }
     
@@ -105,20 +123,63 @@ struct SetGameModel {
         }
     }
     
-    mutating func dealMoreCards() {
-        for _ in 1...3 {
-            tableCards.append(deck.removeFirst())
+    mutating func noMatchMoreCards() -> Bool {
+        for indexOne in 0..<(tableCards.count - 2) {
+            for indexTwo in (indexOne + 1)..<tableCards.count {
+                for indexThree in (indexTwo + 1)..<tableCards.count {
+                    let possibleMatch = [tableCards[indexOne], tableCards[indexTwo], tableCards[indexThree]]
+                    if isMatch(possibleMatch: possibleMatch) {
+                        matchHintCards = possibleMatch
+                        return true
+                    }
+                }
+            }
+        }
+        
+        if deck.count != 0 {
+            dealMoreCards()
+        } else {
+            noMorePossibleMatches = true
+        }
+        
+        return false
+    }
+    
+    mutating func showHint() {
+        for index in 0..<tableCards.count {
+            tableCards[index].isSelected = false
+            if matchHintCards.contains(where: { $0.id == tableCards[index].id }) {
+                tableCards[index].isPossibleMatch = true
+            }
+        }
+        selectedCards.removeAll()
+        userWantsHint = true
+        notShowHint()
+    }
+    
+    mutating func notShowHint() {
+        userWantsHint = false
+        matchHintCards.removeAll()
+    }
+    
+    // MARK: - Custom Funcs
+    
+    private mutating func dealMoreCards() {
+        if deck.count != 0 {
+            for _ in 1...3 {
+                tableCards.append(deck.removeFirst())
+            }
         }
     }
     
     // MARK: - Matching Logic
     
-    func isMatch() -> Bool {
+    private func isMatch(possibleMatch: [Card]? = nil) -> Bool {
         let possibleMatches: [Bool] = [
-            numberOfSymbolsIsMatch(),
-            symboIsMatch(),
-            colorIsMatch(),
-            shadingIsMatch()
+            numberOfSymbolsIsMatch(possibleMatch: possibleMatch),
+            symboIsMatch(possibleMatch: possibleMatch),
+            colorIsMatch(possibleMatch: possibleMatch),
+            shadingIsMatch(possibleMatch: possibleMatch)
         ]
         for item in possibleMatches {
             if item == false {
@@ -128,25 +189,33 @@ struct SetGameModel {
         return true
     }
     
-    func numberOfSymbolsIsMatch() -> Bool {
+    private func numberOfSymbolsIsMatch(possibleMatch: [Card]? = nil) -> Bool {
         
-        guard let numberOfSymbols = selectedCards.first?.numberOfSimbols else { return false }
+        var cards: [Card] = [Card]()
+        
+        if let possibleMatch = possibleMatch {
+            cards = possibleMatch
+        } else {
+            cards = selectedCards
+        }
+        
+        guard let numberOfSymbols = cards.first?.numberOfSimbols else { return false }
         
         var areAllEqual = true
         var areAllDifferent = true
         var secondCardNumberOfSymbols: Int = 0
         
-        for index in 0..<selectedCards.count {
+        for index in 0..<cards.count {
             if index != 0 {
                 
                 if index == 1 {
-                    secondCardNumberOfSymbols = selectedCards[index].numberOfSimbols
+                    secondCardNumberOfSymbols = cards[index].numberOfSimbols
                 }
                 
-                areAllDifferent = selectedCards[index].numberOfSimbols != numberOfSymbols
+                areAllDifferent = cards[index].numberOfSimbols != numberOfSymbols
                 
                 if index == 2, areAllDifferent {
-                    areAllDifferent = selectedCards[index].numberOfSimbols != secondCardNumberOfSymbols
+                    areAllDifferent = cards[index].numberOfSimbols != secondCardNumberOfSymbols
                 }
                 
                 if !areAllDifferent {
@@ -155,8 +224,8 @@ struct SetGameModel {
             }
         }
         
-        for card in selectedCards {
-            if card.id != selectedCards.first?.id {
+        for card in cards {
+            if card.id != cards.first?.id {
                 areAllEqual = card.numberOfSimbols == numberOfSymbols
                 if !areAllEqual {
                     break
@@ -167,25 +236,33 @@ struct SetGameModel {
         return areAllEqual == true || areAllDifferent == true
     }
     
-    func symboIsMatch() -> Bool {
+    private func symboIsMatch(possibleMatch: [Card]? = nil) -> Bool {
         
-        guard let symbol = selectedCards.first?.symbol else { return false }
+        var cards: [Card] = [Card]()
+        
+        if let possibleMatch = possibleMatch {
+            cards = possibleMatch
+        } else {
+            cards = selectedCards
+        }
+        
+        guard let symbol = cards.first?.symbol else { return false }
         
         var areAllEqual: Bool = true
         var areAllDifferent: Bool = true
         var secondCardSymbol: Symbol = .diamond
         
-        for index in 0..<selectedCards.count {
+        for index in 0..<cards.count {
             if index != 0 {
                 
                 if index == 1 {
-                    secondCardSymbol = selectedCards[index].symbol
+                    secondCardSymbol = cards[index].symbol
                 }
                 
-                areAllDifferent = selectedCards[index].symbol != symbol
+                areAllDifferent = cards[index].symbol != symbol
                 
                 if index == 2, areAllDifferent {
-                    areAllDifferent = selectedCards[index].symbol != secondCardSymbol
+                    areAllDifferent = cards[index].symbol != secondCardSymbol
                 }
                 
                 if !areAllDifferent {
@@ -194,8 +271,8 @@ struct SetGameModel {
             }
         }
         
-        for card in selectedCards {
-            if card.id != selectedCards.first?.id {
+        for card in cards {
+            if card.id != cards.first?.id {
                 areAllEqual = card.symbol == symbol
                 if !areAllEqual {
                     break
@@ -206,25 +283,33 @@ struct SetGameModel {
         return areAllEqual == true || areAllDifferent == true
     }
     
-    func colorIsMatch() -> Bool {
+    private func colorIsMatch(possibleMatch: [Card]? = nil) -> Bool {
         
-        guard let color = selectedCards.first?.color else { return false }
+        var cards: [Card] = [Card]()
+        
+        if let possibleMatch = possibleMatch {
+            cards = possibleMatch
+        } else {
+            cards = selectedCards
+        }
+        
+        guard let color = cards.first?.color else { return false }
         
         var areAllEqual = true
         var areAllDifferent = true
         var secondCardColor: Color = .black
         
-        for index in 0..<selectedCards.count {
+        for index in 0..<cards.count {
             if index != 0 {
                 
                 if index == 1 {
-                    secondCardColor = selectedCards[index].color
+                    secondCardColor = cards[index].color
                 }
                 
-                areAllDifferent = selectedCards[index].color != color
+                areAllDifferent = cards[index].color != color
                 
                 if index == 2, areAllDifferent {
-                    areAllDifferent = selectedCards[index].color != secondCardColor
+                    areAllDifferent = cards[index].color != secondCardColor
                 }
                 
                 if !areAllDifferent {
@@ -233,8 +318,8 @@ struct SetGameModel {
             }
         }
         
-        for card in selectedCards {
-            if card.id != selectedCards.first?.id {
+        for card in cards {
+            if card.id != cards.first?.id {
                 areAllEqual = card.color == color
                 if !areAllEqual {
                     break
@@ -245,25 +330,33 @@ struct SetGameModel {
         return areAllEqual == true || areAllDifferent == true
     }
     
-    func shadingIsMatch() -> Bool {
+    private func shadingIsMatch(possibleMatch: [Card]? = nil) -> Bool {
         
-        guard let shading = selectedCards.first?.shading else { return false }
+        var cards: [Card] = [Card]()
+        
+        if let possibleMatch = possibleMatch {
+            cards = possibleMatch
+        } else {
+            cards = selectedCards
+        }
+        
+        guard let shading = cards.first?.shading else { return false }
         
         var areAllEqual = true
         var areAllDifferent = true
         var secondCardShading: Double = 0.0
         
-        for index in 0..<selectedCards.count {
+        for index in 0..<cards.count {
             if index != 0 {
                 
                 if index == 1 {
-                    secondCardShading = selectedCards[index].shading
+                    secondCardShading = cards[index].shading
                 }
                 
-                areAllDifferent = selectedCards[index].shading != shading
+                areAllDifferent = cards[index].shading != shading
                 
                 if index == 2, areAllDifferent {
-                    areAllDifferent = selectedCards[index].shading != secondCardShading
+                    areAllDifferent = cards[index].shading != secondCardShading
                 }
                 
                 if !areAllDifferent {
@@ -272,8 +365,8 @@ struct SetGameModel {
             }
         }
         
-        for card in selectedCards {
-            if card.id != selectedCards.first?.id {
+        for card in cards {
+            if card.id != cards.first?.id {
                 areAllEqual = card.shading == shading
                 if !areAllEqual {
                     break

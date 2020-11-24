@@ -21,6 +21,14 @@ class SetGameViewModel: ObservableObject {
         return model.tableCards
     }
     
+    var noMorePossibleMatches: Bool {
+        return model.noMorePossibleMatches
+    }
+    
+    var shouldClear: Bool {
+        return model.shouldClear
+    }
+    
     // MARK: - Intent(s)
     
     func choose(card: SetGameModel.Card) {
@@ -41,6 +49,22 @@ class SetGameViewModel: ObservableObject {
     
     func setDealt() {
         model.setDealt()
+    }
+    
+    func noMatchMoreCards() -> Bool {
+        model.noMatchMoreCards()
+    }
+    
+    func showHint() {
+        model.showHint()
+    }
+    
+    func notShowHint() {
+        model.notShowHint()
+    }
+    
+    func clearMatchedCardsIfNeeded() {
+        model.clearMatchedCardsIfNeeded()
     }
     
     // MARK: - Custom Functions

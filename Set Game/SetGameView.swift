@@ -12,45 +12,59 @@ struct SetGameView: View {
     @ObservedObject var viewModel: SetGameViewModel
     
     @State var isMatch: Bool?
+    @State var presentHintAlert: Bool = false
+    @State var presentNoMorePossibleMatchesAlert: Bool = false
+    @State var presentYouWon: Bool = false
     
     var body: some View {
         NavigationView {
             VStack {
-                Grid(viewModel.cards) { card in
-                    CardView(card: card)
-                        .padding(5)
-                        .offset(card.isDealt && !card.isMatched ? CGSize(width: 0.0, height: 0.0) : card.randomPosition)
-                        .onTapGesture {
-                            viewModel.choose(card: card)
-                            withAnimation(.linear(duration: 1.11)) {
+                    Grid(viewModel.cards) { card in
+                        CardView(card: card)
+                            .padding(5)
+                            .offset(card.isDealt && !card.isMatched ? CGSize(width: 0.0, height: 0.0) : card.randomPosition)
+                            .onTapGesture {
+                                viewModel.choose(card: card)
                                 isMatch = viewModel.checkMatch()
-                            }
-                            if let isMatch = isMatch, !isMatch { viewModel.deselectCards() }
-                            withAnimation(.linear(duration: 1.12)) {
-                                viewModel.clearMatchedCards()
-                            }
-                        }
-                        .onAppear(perform: {
-                            // This if make the animation works only after the first time preventing to animate all the navigationView
-                            if card.isDealt {
-                                withAnimation(.linear(duration: 1.13)) {
-                                    viewModel.setDealt()
+                                if let isMatch = isMatch, !isMatch { viewModel.deselectCards() }
+                                viewModel.clearMatchedCardsIfNeeded()
+                                if viewModel.shouldClear {
+                                    viewModel.clearMatchedCards()
                                 }
-                            } else {
-                                viewModel.setDealt()
                             }
-                        })
-                        .animation(.spring(), value: card.isDealt)
-                }
-                .padding()
+                            .onAppear(perform: {
+                                viewModel.setDealt()
+                            })
+                            .animation(.linear(duration: 0.75), value: card.isMatched)
+                            .animation(.linear(duration: 1), value: viewModel.shouldClear)
+                            .animation(.linear(duration: 0.75), value: card.isDealt)
+                            .alert(isPresented: $presentHintAlert, content: {
+                                Alert(title: Text("There is a match"), message: Text("Even if you haven't seen it, there is a SET, you want a hint for 2 of your points"), primaryButton: .default(Text("Yes please"), action: {
+                                    viewModel.showHint()
+                                }), secondaryButton: .destructive(Text("No, thanks"), action: {
+                                    viewModel.notShowHint()
+                                }))
+                            })
+                    }
+                    .padding()
                 
                 Button("No match, give me more cards") {
-                    
+                    if viewModel.noMatchMoreCards() {
+                        presentHintAlert = true
+                    }
+                    if viewModel.noMorePossibleMatches {
+                        presentNoMorePossibleMatchesAlert = true
+                    }
                 }
                 .foregroundColor(.white)
                 .padding(15)
                 .background(Color.green)
                 .cornerRadius(30)
+                .alert(isPresented: $presentNoMorePossibleMatchesAlert, content: {
+                    Alert(title: Text("There no more matches"), message: Text("Nice try!!! Better luck next time. Do you wanto to play a new game?"), primaryButton: .default(Text("Yes please"), action: {
+                        viewModel.createNewGame()
+                    }), secondaryButton: .destructive(Text("No, thanks")))
+                })
             }
             .font(.title3)
             .navigationBarTitle(viewModel.title, displayMode: .inline)
@@ -58,6 +72,7 @@ struct SetGameView: View {
                 viewModel.createNewGame()
             }).foregroundColor(.green))
         }
+        .animation(.none)
     }
 }
 
@@ -119,7 +134,7 @@ struct CardView: View {
         }
         .padding()
         .cardify()
-        .foregroundColor(card.isSelected ? .red : .gray)
+        .foregroundColor(card.isSelected ? .red : card.isPossibleMatch ? .orange : .gray)
     }
     
     // MARK: - Drawing Constants
